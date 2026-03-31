@@ -107,9 +107,34 @@ type BasicAuthPromptHandler = (
   request: BasicAuthPromptRequest,
 ) => Promise<BasicAuthCredentials | null>;
 
+const SESSION_AUTH_KEY = "jobops.basicAuthCredentials";
+
+function loadStoredCredentials(): BasicAuthCredentials | null {
+  try {
+    const stored = sessionStorage.getItem(SESSION_AUTH_KEY);
+    if (!stored) return null;
+    return JSON.parse(stored) as BasicAuthCredentials;
+  } catch {
+    return null;
+  }
+}
+
+function storeCredentials(credentials: BasicAuthCredentials | null): void {
+  try {
+    if (credentials) {
+      sessionStorage.setItem(SESSION_AUTH_KEY, JSON.stringify(credentials));
+    } else {
+      sessionStorage.removeItem(SESSION_AUTH_KEY);
+    }
+  } catch {
+    // Ignore storage errors in restricted browser contexts.
+  }
+}
+
 let basicAuthPromptHandler: BasicAuthPromptHandler | null = null;
 let basicAuthPromptInFlight: Promise<BasicAuthCredentials | null> | null = null;
-let cachedBasicAuthCredentials: BasicAuthCredentials | null = null;
+let cachedBasicAuthCredentials: BasicAuthCredentials | null =
+  loadStoredCredentials();
 
 export function setBasicAuthPromptHandler(
   handler: BasicAuthPromptHandler | null,
@@ -119,12 +144,14 @@ export function setBasicAuthPromptHandler(
 
 export function clearBasicAuthCredentials(): void {
   cachedBasicAuthCredentials = null;
+  storeCredentials(null);
 }
 
 export function __resetApiClientAuthForTests(): void {
   basicAuthPromptHandler = null;
   basicAuthPromptInFlight = null;
   cachedBasicAuthCredentials = null;
+  storeCredentials(null);
 }
 
 function normalizeApiResponse<T>(
@@ -313,6 +340,7 @@ async function fetchApi<T>(
         throw toApiError(response, parsed);
       }
       cachedBasicAuthCredentials = credentials;
+      storeCredentials(credentials);
       usernameHint = credentials.username;
       authHeader = encodeBasicAuth(credentials);
       authAttempt += 1;
