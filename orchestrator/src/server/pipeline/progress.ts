@@ -1,4 +1,5 @@
 import { logger } from "@infra/logger";
+import type { ExtractorSourceId } from "@shared/extractors";
 
 /**
  * Pipeline progress tracking with Server-Sent Events.
@@ -7,6 +8,7 @@ import { logger } from "@infra/logger";
 export type PipelineStep =
   | "idle"
   | "crawling"
+  | "challenge_required"
   | "importing"
   | "scoring"
   | "processing"
@@ -14,12 +16,20 @@ export type PipelineStep =
   | "cancelled"
   | "failed";
 
+export interface PendingChallenge {
+  extractorId: string;
+  extractorName: string;
+  url: string;
+  sources: ExtractorSourceId[];
+}
+
 export type CrawlSource = string;
 
 export interface PipelineProgress {
   step: PipelineStep;
   message: string;
   detail?: string;
+  pendingChallenges?: PendingChallenge[];
   crawlingSource: CrawlSource | null;
   crawlingSourcesCompleted: number;
   crawlingSourcesTotal: number;
@@ -462,5 +472,27 @@ export const progressHelpers = {
       detail: error,
       error,
       completedAt: new Date().toISOString(),
+    }),
+
+  challengeRequired: (challenges: PendingChallenge[]) =>
+    updateProgress({
+      step: "challenge_required",
+      message: `${challenges.length} extractor${challenges.length > 1 ? "s need" : " needs"} a Cloudflare challenge solved`,
+      detail: challenges.map((c) => c.extractorName).join(", "),
+      pendingChallenges: challenges,
+    }),
+
+  challengeResolved: (remaining: PendingChallenge[]) =>
+    updateProgress({
+      step: "challenge_required",
+      message:
+        remaining.length > 0
+          ? `${remaining.length} challenge${remaining.length > 1 ? "s" : ""} remaining`
+          : "All challenges solved, resuming...",
+      detail:
+        remaining.length > 0
+          ? remaining.map((c) => c.extractorName).join(", ")
+          : "Re-running extractors",
+      pendingChallenges: remaining,
     }),
 };

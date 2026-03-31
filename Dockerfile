@@ -41,6 +41,7 @@ COPY extractors/gradcracker/package*.json ./extractors/gradcracker/
 COPY extractors/startupjobs/package*.json ./extractors/startupjobs/
 COPY extractors/workingnomads/package*.json ./extractors/workingnomads/
 COPY extractors/ukvisajobs/package*.json ./extractors/ukvisajobs/
+COPY extractors/browser-utils/package*.json ./extractors/browser-utils/
 
 # Install Node dependencies with npm cache (dev deps needed for build)
 RUN --mount=type=cache,target=/root/.npm \
@@ -64,6 +65,7 @@ COPY extractors/jobspy ./extractors/jobspy
 COPY extractors/startupjobs ./extractors/startupjobs
 COPY extractors/workingnomads ./extractors/workingnomads
 COPY extractors/ukvisajobs ./extractors/ukvisajobs
+COPY extractors/browser-utils ./extractors/browser-utils
 
 # Build documentation site bundle
 WORKDIR /app/docs-site
@@ -89,14 +91,15 @@ ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 ENV PATH=/root/.local/bin:${PATH}
 ENV TECTONIC_VERSION=0.15.0
 
-# Install only runtime dependencies
+# Install runtime dependencies + virtual display for headed CF challenge solver
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     python3 python3-minimal libpython3.11-minimal \
     python3-pip \
     libgtk-3-0 libgtk-3-common \
     libdbus-glib-1-2 libxt6 libx11-xcb1 libasound2 \
-    curl && \
+    curl \
+    xvfb x11vnc novnc websockify && \
     rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*
 
 # Install Tectonic for local LaTeX resume rendering.
@@ -133,6 +136,7 @@ COPY extractors/gradcracker/package*.json ./extractors/gradcracker/
 COPY extractors/startupjobs/package*.json ./extractors/startupjobs/
 COPY extractors/workingnomads/package*.json ./extractors/workingnomads/
 COPY extractors/ukvisajobs/package*.json ./extractors/ukvisajobs/
+COPY extractors/browser-utils/package*.json ./extractors/browser-utils/
 
 # Install production Node dependencies only
 RUN --mount=type=cache,target=/root/.npm \
@@ -152,6 +156,7 @@ COPY extractors/jobspy ./extractors/jobspy
 COPY extractors/startupjobs ./extractors/startupjobs
 COPY extractors/workingnomads ./extractors/workingnomads
 COPY extractors/ukvisajobs ./extractors/ukvisajobs
+COPY extractors/browser-utils ./extractors/browser-utils
 
 # Reuse Camoufox binaries from builder instead of fetching again
 COPY --from=builder /root/.cache/camoufox /root/.cache/camoufox
@@ -160,10 +165,17 @@ WORKDIR /app
 # Create data directory
 RUN mkdir -p /app/data/pdfs
 
+ENV DISPLAY=:99
+ENV NOVNC_PORT=6080
+
 EXPOSE 3001
+EXPOSE 6080
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
   CMD curl -f http://localhost:3001/health || exit 1
 
+COPY docker-entrypoint.sh /app/docker-entrypoint.sh
+RUN chmod +x /app/docker-entrypoint.sh
+
 WORKDIR /app/orchestrator
-CMD ["sh", "-c", "npx tsx src/server/db/migrate.ts && npm run start"]
+ENTRYPOINT ["/app/docker-entrypoint.sh"]

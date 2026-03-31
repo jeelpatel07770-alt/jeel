@@ -1,0 +1,27 @@
+{
+  "name": "browser-utils",
+  "version": "0.0.1",
+  "type": "module",
+  "description": "Shared browser resilience utilities for Playwright-based extractors",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./*": "./src/*"
+  },
+  "dependencies": {
+    "camoufox-js": "^0.9.2"
+  },
+  "peerDependencies": {
+    "playwright": "*"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "playwright": "*",
+    "typescript": "~5.9.0"
+  },
+  "scripts": {
+    "check:types": "tsc --noEmit"
+  },
+  "license": "SEE LICENSE IN ../../LICENSE"
+}

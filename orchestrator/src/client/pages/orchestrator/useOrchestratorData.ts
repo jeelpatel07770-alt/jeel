@@ -22,6 +22,7 @@ const isDocumentVisible = () =>
 type PipelineProgressStep =
   | "idle"
   | "crawling"
+  | "challenge_required"
   | "importing"
   | "scoring"
   | "processing"
@@ -52,6 +53,7 @@ type PipelineTerminalSnapshot = {
 
 const ACTIVE_PIPELINE_STEPS: ReadonlySet<PipelineProgressStep> = new Set([
   "crawling",
+  "challenge_required",
   "importing",
   "scoring",
   "processing",
