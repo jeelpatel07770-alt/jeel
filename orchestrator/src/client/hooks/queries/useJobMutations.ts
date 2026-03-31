@@ -24,8 +24,15 @@ export function useMarkAsAppliedMutation() {
       const previousJob = queryClient.getQueryData<Job>(
         queryKeys.jobs.detail(id),
       );
+      const appliedAt = new Date().toISOString();
       queryClient.setQueryData<Job>(queryKeys.jobs.detail(id), (current) =>
-        current ? { ...current, status: "applied" } : current,
+        current
+          ? {
+              ...current,
+              status: "applied",
+              appliedAt: current.appliedAt ?? appliedAt,
+            }
+          : current,
       );
       return { previousJob, id };
     },

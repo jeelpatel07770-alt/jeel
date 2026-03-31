@@ -745,6 +745,44 @@ describe.sequential("Jobs API routes", () => {
     expect(body.data.appliedAt).toBeTruthy();
   });
 
+  it("treats applying an already applied job as idempotent", async () => {
+    const { createJob } = await import("@server/repositories/jobs");
+    const { getStageEvents } = await import(
+      "@server/services/applicationTracking"
+    );
+
+    const job = await createJob({
+      source: "manual",
+      title: "Idempotent Role",
+      employer: "Acme",
+      jobUrl: "https://example.com/job/4",
+      jobDescription: "Test description",
+    });
+
+    const firstRes = await fetch(`${baseUrl}/api/jobs/${job.id}/apply`, {
+      method: "POST",
+    });
+    const firstBody = await firstRes.json();
+    expect(firstBody.ok).toBe(true);
+    expect(firstBody.data.appliedAt).toBeTruthy();
+
+    const secondRes = await fetch(`${baseUrl}/api/jobs/${job.id}/apply`, {
+      method: "POST",
+    });
+    const secondBody = await secondRes.json();
+
+    expect(secondRes.status).toBe(200);
+    expect(secondBody.ok).toBe(true);
+    expect(secondBody.data.status).toBe("applied");
+    expect(secondBody.data.appliedAt).toBe(firstBody.data.appliedAt);
+
+    const stageEvents = await getStageEvents(job.id);
+    const appliedEvents = stageEvents.filter(
+      (event) => event.toStage === "applied",
+    );
+    expect(appliedEvents).toHaveLength(1);
+  });
+
   it("rescoring a job updates the suitability fields", async () => {
     const { createJob } = await import("@server/repositories/jobs");
     const { scoreJobSuitability } = await import("@server/services/scorer");

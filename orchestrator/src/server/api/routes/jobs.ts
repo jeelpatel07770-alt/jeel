@@ -1251,6 +1251,10 @@ jobsRouter.post("/:id/apply", async (req: Request, res: Response) => {
       return fail(res, notFound("Job not found"));
     }
 
+    if (job.status === "applied" && job.appliedAt) {
+      return ok(res, job);
+    }
+
     const appliedAtDate = new Date();
     const appliedAt = appliedAtDate.toISOString();
 
